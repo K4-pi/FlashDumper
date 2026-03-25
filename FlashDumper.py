@@ -21,6 +21,7 @@ class UARTManager(QMainWindow):
         self.setWindowTitle("Data reader")
         self.resize(1000, 700)
         
+        # Dark mode
         self.setStyleSheet("""
             QWidget {
                 background-color: #2b2b2b;
@@ -210,7 +211,7 @@ class UARTManager(QMainWindow):
             }
         """)
 
-        if self.connection.serial_port != None and self.connection.baudrate != 0 and not self.connection.is_running:
+        if not self.connection.is_running:
             self.connect_btn.clicked.connect(self.connect_click)
         
         toolbar.addWidget(self.connect_btn)
