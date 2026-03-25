@@ -20,7 +20,22 @@ class UARTManager(QMainWindow):
         super().__init__()
         self.setWindowTitle("Data reader")
         self.resize(1000, 700)
-
+        
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #2b2b2b;
+                color: #ffffff;
+            }
+            QTextEdit {
+                background-color: #1e1e1e;
+                color: #00ff00; /* Green terminal text */
+            }
+            QPushButton {
+                background-color: #3c3f41;
+                border: 1px solid #555;
+            }
+        """)
+		
         self.signals = SerialSignals()
         self.signals.data_received.connect(self.update_terminal)
 
