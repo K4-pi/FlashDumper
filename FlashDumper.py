@@ -104,7 +104,6 @@ class UARTManager(QMainWindow):
 
         self.status_bar_text("Ready")
 
-
     def status_bar_text(self, text):
         self.setStatusBar(QStatusBar())
         self.statusBar().showMessage(text)
@@ -390,11 +389,6 @@ class UARTManager(QMainWindow):
         
         error.setStandardButtons(QMessageBox.StandardButton.Ok)
         error.exec()
-
-    def on_scroll(self, value):
-        # Snap to 16-byte boundaries so lines don't shift weirdly
-        snapped_offset = (value // 16) * 16
-        self.load_page(snapped_offset)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
