@@ -1,7 +1,8 @@
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QTreeWidget, QTextEdit, QSplitter, 
                              QToolBar, QStatusBar, QMenu, QToolButton, QSizePolicy, 
-                             QFileDialog, QTreeWidgetItem, QFileIconProvider, QLabel, QMessageBox)
+                             QFileDialog, QTreeWidgetItem, QFileIconProvider, QLabel, 
+                             QMessageBox, QScrollBar)
 
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtCore import Qt, QFileInfo, QTimer
@@ -14,13 +15,14 @@ import hexdump
 
 from src.connection import Connection
 from src.signals import SerialSignals
+from src.dumpWindow import DumpWindow
 
 class UARTManager(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Data reader")
         self.resize(1000, 700)
-        
+
         # Dark mode
         self.setStyleSheet("""
             QWidget {
@@ -44,6 +46,8 @@ class UARTManager(QMainWindow):
         self.current_baud = "115200"
         self.hex_mode = False
 
+        self.current_opened_file = None
+
         self.connection = Connection()
 
         self.init_toolbar()
@@ -62,12 +66,22 @@ class UARTManager(QMainWindow):
         self.file_tree = QTreeWidget()
         self.file_tree.setHeaderLabel("Files explorer")
 
-        self.file_tree.itemDoubleClicked.connect(self.on_item_clicked)
+        self.file_tree.itemDoubleClicked.connect(self.on_file_clicked)
         
         self.editor = QTextEdit()
         self.editor.setReadOnly(True)
         self.editor.setPlaceholderText("Hex explorer")
+
+        editor_font = QFont("Courier New", 12) 
+        editor_font.setStyleHint(QFont.StyleHint.Monospace)
+        self.editor.setFont(editor_font)
+
+        self.editor.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap) # Stop the text from wrapping to the next line
         
+        self.hex_scroll = QScrollBar(Qt.Orientation.Vertical)
+        self.hex_scroll.valueChanged.connect(self.on_scroll)
+            
+
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
         self.terminal.setStyleSheet("background-color: #1e1e1e; color: #00ff00;")
@@ -89,6 +103,7 @@ class UARTManager(QMainWindow):
         main_layout.addWidget(self.h_splitter)
 
         self.status_bar_text("Ready")
+
 
     def status_bar_text(self, text):
         self.setStatusBar(QStatusBar())
@@ -162,6 +177,20 @@ class UARTManager(QMainWindow):
         
         toolbar.addAction(self.hex_action)
     
+        #====================================
+        #           DUMP WINDOW
+        #====================================
+
+        dump_action = QAction("Flash Dump", self)
+        dump_action.setStatusTip("Extract firmware from a connected board")
+        dump_action.triggered.connect(self.open_dump_window)
+        
+        toolbar.addAction(dump_action)
+
+        #====================================
+        #           CONNECTION BUTTONS
+        #====================================
+
         # DISCONNECT BUTTON
         spacer = QWidget()
         spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -216,10 +245,10 @@ class UARTManager(QMainWindow):
         
         toolbar.addWidget(self.connect_btn)
 
-    def on_item_clicked(self, item, column):
-        file_path = item.text(0)
+    def on_file_clicked(self, file, column):
+        file_path = file.text(0)
         
-        parent = item.parent()
+        parent = file.parent()
         while parent:
             file_path = os.path.join(parent.text(0), file_path)
             parent = parent.parent()
@@ -239,18 +268,35 @@ class UARTManager(QMainWindow):
             except Exception as e:
                 self.show_error(f"Error opening file: {e}")
 
+            else:
+                self.current_opened_file = file_path
+
+    def open_dump_window(self):
+        ports = self.connection.get_available_ports()
+
+        if not ports:
+            self.show_error("No ports found")
+            return
+
+        dialog = DumpWindow(ports_list=ports, parent=self)
+        dialog.exec()
+
     def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open Binary File", "", "Binary Files (*.bin);;Python Files (*.py);;All Files (*)")            
+        file_path, _ = QFileDialog.getOpenFileName(self, "Open Binary File", "", "All Files (*);;Binary Files (*.bin);;Python Files (*.py)")            
 
         if file_path:
             
             try:
                 with open(file_path, "rb") as f:
                     self.editor.clear()
-                    self.editor.insertPlainText(hexdump.hexdump(f.read(), result='return'))
+                    self.editor.insertPlainText(hexdump.hexdump(f.read(1024 * 64), result='return'))
 
             except Exception as e:
                 self.show_error(f"Error opening file: {e}")
+
+            else:
+                self.current_opened_file = file_path
+                self.editor.insertPlainText("\n[ Data cropped for example ]")
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -266,10 +312,9 @@ class UARTManager(QMainWindow):
             root_item.setText(0, root_name)
             root_item.setExpanded(True)
             
-            # Populates tree recursively
-            self.add_tree_nodes(folder_path, root_item)
+            self.add_file_nodes(folder_path, root_item) # Populates tree recursively
 
-    def add_tree_nodes(self, path, parent_item):
+    def add_file_nodes(self, path, parent_item):
         try:
             for directory in sorted(os.listdir(path)):
                 full_path = os.path.join(path, directory)
@@ -283,7 +328,7 @@ class UARTManager(QMainWindow):
                 item.setIcon(0, icon)
                 
                 if os.path.isdir(full_path):
-                    self.add_tree_nodes(full_path, item)
+                    self.add_file_nodes(full_path, item)
                         
         except PermissionError:
             self.show_error(f"No permission to file {path}")
@@ -303,7 +348,7 @@ class UARTManager(QMainWindow):
     def toggle_hex_mode(self, checked):
         self.hex_mode = checked
         self.terminal.clear()
-        self.terminal.append(f"\n--- {'HEX' if checked else 'PLAIN TEXT'} mode ---\n")
+        self.terminal.append(f"--- {'HEX' if checked else 'PLAIN TEXT'} mode ---\n")
 
     def refresh_ports(self):
 
@@ -345,6 +390,11 @@ class UARTManager(QMainWindow):
         
         error.setStandardButtons(QMessageBox.StandardButton.Ok)
         error.exec()
+
+    def on_scroll(self, value):
+        # Snap to 16-byte boundaries so lines don't shift weirdly
+        snapped_offset = (value // 16) * 16
+        self.load_page(snapped_offset)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
