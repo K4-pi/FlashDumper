@@ -7,8 +7,9 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtCore import Qt, QFileInfo, QTimer
 
+from sys import exit, argv
+
 import os
-import sys
 import threading
 
 import hexdump
@@ -77,10 +78,6 @@ class UARTManager(QMainWindow):
         self.editor.setFont(editor_font)
 
         self.editor.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap) # Stop the text from wrapping to the next line
-        
-        self.hex_scroll = QScrollBar(Qt.Orientation.Vertical)
-        self.hex_scroll.valueChanged.connect(self.on_scroll)
-            
 
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
@@ -391,8 +388,8 @@ class UARTManager(QMainWindow):
         error.exec()
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    app = QApplication(argv)
     window = UARTManager()
     window.show()
 
-    sys.exit(app.exec())
+    exit(app.exec())
