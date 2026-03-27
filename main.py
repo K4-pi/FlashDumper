@@ -17,14 +17,15 @@ import hexdump
 from src.connection import Connection
 from src.signals import SerialSignals
 from src.dumpWindow import DumpWindow
+from src.fileMetaWindow import FileMetaWindow
 
-from src.analizeFile import strings
+from src.analizeFile import strings, analyze_file_meta
 
 class UARTManager(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Data reader")
-        self.resize(1000, 700)
+        self.resize(1300, 800)
 
         # Dark mode
         self.setStyleSheet("""
@@ -77,7 +78,7 @@ class UARTManager(QMainWindow):
         self.editor.setReadOnly(True)
         self.editor.setPlaceholderText("Hex explorer")
 
-        editor_font = QFont("Courier New", 12) 
+        editor_font = QFont("Courier New", 12)
         editor_font.setStyleHint(QFont.StyleHint.Monospace)
         self.editor.setFont(editor_font)
 
@@ -92,7 +93,7 @@ class UARTManager(QMainWindow):
         # ditor and Terminal to Vertical splitter
         self.v_splitter.addWidget(self.editor)
         self.v_splitter.addWidget(self.terminal)
-        self.v_splitter.setStretchFactor(0, 2) 
+        self.v_splitter.setStretchFactor(0, 2)
         self.v_splitter.setStretchFactor(1, 2)
 
         # Vertical Splitter to Horizontal splitter
@@ -111,11 +112,9 @@ class UARTManager(QMainWindow):
         self.statusBar().showMessage(text)
 
     def update_terminal(self, data):
-        
         if self.hex_mode:
             hex_text = data.hex(' ').upper() + " "
             self.terminal.insertPlainText(hex_text)
-        
         else:
             try:
                 text = data.decode('ascii', errors='replace')
@@ -187,6 +186,16 @@ class UARTManager(QMainWindow):
         dump_action.triggered.connect(self.open_dump_window)
         
         toolbar.addAction(dump_action)
+
+        #====================================
+        #           META WINDOW
+        #====================================
+
+        meta_action = QAction("Signatures", self)
+        meta_action.setStatusTip("Show signatures of loaded file")
+        meta_action.triggered.connect(self.open_meta_window)
+
+        toolbar.addAction(meta_action)
 
         #====================================
         #           CONNECTION BUTTONS
@@ -272,6 +281,15 @@ class UARTManager(QMainWindow):
             else:
                 self.current_opened_file = file_path
 
+    def open_meta_window(self):
+
+        if self.current_opened_file is None:
+            return
+
+        meta_data = analyze_file_meta(self.current_opened_file)
+        dialog = FileMetaWindow(meta_data, self)
+        dialog.exec()
+
     def open_dump_window(self):
         ports = self.connection.get_available_ports()
 
@@ -296,6 +314,7 @@ class UARTManager(QMainWindow):
 
                     self.strings_tree.clear()
 
+                    # STRINGS
                     for s in strings(file_path, 4):
                         string_item = QTreeWidgetItem(self.strings_tree)
                         string_item.setText(0, s.decode('utf-8'))
