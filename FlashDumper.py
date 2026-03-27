@@ -18,6 +18,8 @@ from src.connection import Connection
 from src.signals import SerialSignals
 from src.dumpWindow import DumpWindow
 
+from src.analizeFile import strings
+
 class UARTManager(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -66,9 +68,11 @@ class UARTManager(QMainWindow):
 
         self.file_tree = QTreeWidget()
         self.file_tree.setHeaderLabel("Files explorer")
-
         self.file_tree.itemDoubleClicked.connect(self.on_file_clicked)
-        
+
+        self.strings_tree = QTreeWidget()
+        self.strings_tree.setHeaderLabel("Strings")
+
         self.editor = QTextEdit()
         self.editor.setReadOnly(True)
         self.editor.setPlaceholderText("Hex explorer")
@@ -96,6 +100,7 @@ class UARTManager(QMainWindow):
         self.h_splitter.addWidget(self.v_splitter)
         self.h_splitter.setStretchFactor(0, 1)
         self.h_splitter.setStretchFactor(1, 4)
+        self.h_splitter.addWidget(self.strings_tree)
 
         main_layout.addWidget(self.h_splitter)
 
@@ -284,8 +289,17 @@ class UARTManager(QMainWindow):
             
             try:
                 with open(file_path, "rb") as f:
+                    hex_data = f.read(2048 * 64)
+
                     self.editor.clear()
-                    self.editor.insertPlainText(hexdump.hexdump(f.read(1024 * 64), result='return'))
+                    self.editor.insertPlainText(hexdump.hexdump(hex_data, result='return'))
+
+                    self.strings_tree.clear()
+
+                    for s in strings(file_path, 4):
+                        string_item = QTreeWidgetItem(self.strings_tree)
+                        string_item.setText(0, s.decode('utf-8'))
+                        string_item.setExpanded(True)
 
             except Exception as e:
                 self.show_error(f"Error opening file: {e}")
