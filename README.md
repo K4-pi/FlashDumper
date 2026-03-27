@@ -1,4 +1,4 @@
-# Dokumentacja projetu: ** Embedded debugger **
+# Dokumentacja projetu: * Embedded debugger *
 
 ## Zespoł projetowy:
 _Kacper Zoła_
