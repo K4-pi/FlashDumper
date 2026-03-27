@@ -3,36 +3,30 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from os import getcwd
 import os
 
-# Zakładam, że flashDump.py jest w tym samym folderze lub poprawnym pathu
 from src.flashDump import Esp32Dump
 
 class DumpWindow(QDialog):
     def __init__(self, ports_list, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Firmware flash dump")
-        self.setFixedSize(450, 450) # Troszkę większy, żeby się wszystko zmieściło
-        
+        self.setFixedSize(450, 450)         
         self.ports = ports_list
 
         layout = QVBoxLayout(self)
 
-        # 1. Wybór platformy
         layout.addWidget(QLabel("Select Board:"))
         self.board_type = QComboBox()
         self.board_type.addItems(["ESP32 (Serial/UART)", "ARM Cortex-M (SWD/ST-Link)"])
         layout.addWidget(self.board_type)
 
-        # 2. Stacked Widget
         self.stack = QStackedWidget()
         self.stack.addWidget(self.create_esp32_page())
         self.stack.addWidget(self.create_stm32_page())
         
-        # Łączymy zmianę combo ze zmianą strony
         self.board_type.currentIndexChanged.connect(self.stack.setCurrentIndex)
         
         layout.addWidget(self.stack)
 
-        # 3. Przycisk Dump
         btn_layout = QHBoxLayout()
         self.dump_btn = QPushButton("Start Dump")
         self.dump_btn.setStyleSheet("background-color: #2e7d32; color: white; font-weight: bold; height: 35px;")
@@ -91,7 +85,7 @@ class DumpWindow(QDialog):
         l.addWidget(self.arm_addr)
         
         l.addWidget(QLabel("Size (Bytes):"))
-        self.arm_size = QLineEdit("0x80000") # 512KB dla Twojego Nucleo
+        self.arm_size = QLineEdit("0x80000") # 512KB 
         l.addWidget(self.arm_size)
         return page
 
@@ -101,7 +95,6 @@ class DumpWindow(QDialog):
 
         if index == 0: # ESP32
             try:
-                # Upewnij się, że Twoja klasa Esp32Dump przyjmuje te parametry
                 esp = Esp32Dump(self.esp_baud.currentText(), self.port_selector.currentText(), self.save_path.text(), self.esp_flash_size.text())
                 esp.dump()
                 self.accept()
