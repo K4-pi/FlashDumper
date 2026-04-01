@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTreeWidget, QTextEdit, QSplitter, 
                              QToolBar, QStatusBar, QMenu, QToolButton, QSizePolicy, 
                              QFileDialog, QTreeWidgetItem, QFileIconProvider, QLabel, 
-                             QMessageBox, QScrollBar)
+                             QMessageBox, QScrollBar, QHeaderView, QAbstractItemView)
 
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtCore import Qt, QFileInfo, QTimer
@@ -74,15 +74,20 @@ class UARTManager(QMainWindow):
         self.strings_tree = QTreeWidget()
         self.strings_tree.setHeaderLabel("Strings")
 
-        self.editor = QTextEdit()
-        self.editor.setReadOnly(True)
-        self.editor.setPlaceholderText("Hex explorer")
+        self.editor_tree = QTreeWidget()
+        self.editor_tree.setHeaderLabel("Editor")
 
-        editor_font = QFont("Courier New", 12)
-        editor_font.setStyleHint(QFont.StyleHint.Monospace)
-        self.editor.setFont(editor_font)
+        self.editor_tree.setColumnCount(3)
+        self.editor_tree.setHeaderLabels(["Address", "Hex Content", "ASCII"])
 
-        self.editor.setLineWrapMode(QTextEdit.LineWrapMode.NoWrap) # Stop the text from wrapping to the next line
+        self.editor_tree.header().setMinimumSectionSize(125)
+
+        self.editor_tree.setColumnWidth(0, 125)
+        self.editor_tree.setColumnWidth(1, 475)
+        self.editor_tree.setColumnWidth(2, 125)
+
+        self.editor_tree.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
+        self.editor_tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
 
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
@@ -91,10 +96,10 @@ class UARTManager(QMainWindow):
         self.terminal.append("--- PLAIN TEXT mode ---")
 
         # ditor and Terminal to Vertical splitter
-        self.v_splitter.addWidget(self.editor)
+        self.v_splitter.addWidget(self.editor_tree)
         self.v_splitter.addWidget(self.terminal)
-        self.v_splitter.setStretchFactor(0, 2)
-        self.v_splitter.setStretchFactor(1, 2)
+        self.v_splitter.setStretchFactor(0, 3)
+        self.v_splitter.setStretchFactor(1, 1)
 
         # Vertical Splitter to Horizontal splitter
         self.h_splitter.addWidget(self.file_tree)
@@ -272,8 +277,8 @@ class UARTManager(QMainWindow):
                     
                     hex_text = hexdump.hexdump(raw_data, result='return')
                     
-                    self.editor.clear()
-                    self.editor.insertPlainText(hex_text)
+                    self.editor_tree.clear()
+                    # self.editor.insertPlainText(hex_text)
                     
             except Exception as e:
                 self.show_error(f"Error opening file: {e}")
@@ -307,10 +312,27 @@ class UARTManager(QMainWindow):
             
             try:
                 with open(file_path, "rb") as f:
-                    hex_data = f.read(2048 * 64)
+                    # hex_data = f.read(2048 * 64)
+                    hex_data = f.read()
 
-                    self.editor.clear()
-                    self.editor.insertPlainText(hexdump.hexdump(hex_data, result='return'))
+                    self.editor_tree.clear()
+
+                    for line in hexdump.hexdump(hex_data, result='generator'):
+                        address = line[:10].strip()
+                        content = line[10:59].strip()
+                        text    = line[60:].strip() 
+
+                        editor_item = QTreeWidgetItem(self.editor_tree)
+                        
+                        editor_item.setText(0, address)
+                        editor_item.setText(1, content)
+                        editor_item.setText(2, text)
+                        
+                        editor_item.setFlags(editor_item.flags() | Qt.ItemFlag.ItemIsSelectable)
+                        
+                        font = QFont("Courier New", 12)
+                        for i in range(3):
+                            editor_item.setFont(i, font)
 
                     self.strings_tree.clear()
 
@@ -325,7 +347,6 @@ class UARTManager(QMainWindow):
 
             else:
                 self.current_opened_file = file_path
-                self.editor.insertPlainText("\n[ Data cropped for example ]")
 
     def open_folder(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Directory")

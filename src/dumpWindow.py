@@ -3,7 +3,7 @@ from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
 from os import getcwd
 import os
 
-from src.flashDump import Esp32Dump
+from src.flashDump import Esp32Dump, ArmDump
 
 class DumpWindow(QDialog):
     def __init__(self, ports_list, parent=None):
@@ -58,7 +58,7 @@ class DumpWindow(QDialog):
         self.esp_flash_size = QLineEdit("0x400000")
         l.addWidget(self.esp_flash_size)
 
-        l.addWidget(QLabel("File path:"))
+        l.addWidget(QLabel("Save as:"))
         self.save_path = QLineEdit(os.path.join(getcwd(), "_dump_esp32.bin"))
         l.addWidget(self.save_path)
         return page
@@ -66,15 +66,6 @@ class DumpWindow(QDialog):
     def create_stm32_page(self):
         page = QWidget()
         l = QVBoxLayout(page)
-        
-        l.addWidget(QLabel("Select Debugger (ST-Link):"))
-        h_box = QHBoxLayout()
-        self.arm_probe_combo = QComboBox()
-        self.scan_btn = QPushButton("Scan")
-        # self.scan_btn.clicked.connect(self.refresh_arm_probes)
-        h_box.addWidget(self.arm_probe_combo)
-        h_box.addWidget(self.scan_btn)
-        l.addLayout(h_box)
 
         l.addWidget(QLabel("Target Chip (e.g. stm32f303re):"))
         self.arm_target = QLineEdit("stm32f303re")
@@ -87,6 +78,10 @@ class DumpWindow(QDialog):
         l.addWidget(QLabel("Size (Bytes):"))
         self.arm_size = QLineEdit("0x80000") # 512KB 
         l.addWidget(self.arm_size)
+        
+        l.addWidget(QLabel("Save as:"))
+        self.save_path = QLineEdit(os.path.join(getcwd(), "_dump_stm32.bin"))
+        l.addWidget(self.save_path)
         return page
 
 
@@ -102,4 +97,6 @@ class DumpWindow(QDialog):
                 self.show_error("Błąd ESP32", str(e))
 
         elif index == 1: # STM32
+            stm32 = ArmDump(self.arm_target.text(), int(self.arm_addr.text(), 16), int(self.arm_size.text(), 16), self.save_path.text()) 
+            stm32.dump()
             print("stm32")
