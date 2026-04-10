@@ -2,7 +2,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTreeWidget, QTextEdit, QSplitter, 
                              QToolBar, QStatusBar, QMenu, QToolButton, QSizePolicy, 
                              QFileDialog, QTreeWidgetItem, QFileIconProvider, QLabel, 
-                             QMessageBox, QScrollBar, QHeaderView, QAbstractItemView)
+                             QMessageBox, QScrollBar, QHeaderView, QAbstractItemView,
+                             QInputDialog, QLineEdit)
 
 from PyQt6.QtGui import QAction, QFont
 from PyQt6.QtCore import Qt, QFileInfo, QTimer
@@ -82,12 +83,21 @@ class UARTManager(QMainWindow):
 
         self.editor_tree.header().setMinimumSectionSize(125)
 
+        self.editor_tree.header().setStretchLastSection(False)
+
+        self.editor_tree.header().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self.editor_tree.header().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+       
+        self.editor_tree.header().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        
         self.editor_tree.setColumnWidth(0, 125)
         self.editor_tree.setColumnWidth(1, 475)
-        self.editor_tree.setColumnWidth(2, 125)
+        self.editor_tree.setColumnWidth(2, 175)
 
         self.editor_tree.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
         self.editor_tree.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+        self.editor_tree.itemDoubleClicked.connect(self.content_item_clicked)
 
         self.terminal = QTextEdit()
         self.terminal.setReadOnly(True)
@@ -139,9 +149,11 @@ class UARTManager(QMainWindow):
         files_menu = QMenu(self)
 
         files_menu.addSeparator()
+        save_file_act = files_menu.addAction("Save file")
         open_file_act = files_menu.addAction("Open file")
         open_dir_act = files_menu.addAction("Open folder")
-
+        
+        save_file_act.triggered.connect(self.save_content_to_file)
         open_file_act.triggered.connect(self.open_file)
         open_dir_act.triggered.connect(self.open_folder)
 
@@ -259,6 +271,14 @@ class UARTManager(QMainWindow):
             self.connect_btn.clicked.connect(self.connect_click)
         
         toolbar.addWidget(self.connect_btn)
+    
+    def content_item_clicked(self, item, column):
+        item_text = item.text(column)
+        value = self.edit_window(item_text)
+
+        if value:
+            item.setText(column, value)
+            # TODO: need to update ascii snippet 
 
     def on_file_clicked(self, file, column):
         file_path = file.text(0)
@@ -278,7 +298,6 @@ class UARTManager(QMainWindow):
                     hex_text = hexdump.hexdump(raw_data, result='return')
                     
                     self.editor_tree.clear()
-                    # self.editor.insertPlainText(hex_text)
                     
             except Exception as e:
                 self.show_error(f"Error opening file: {e}")
@@ -320,7 +339,7 @@ class UARTManager(QMainWindow):
                     for line in hexdump.hexdump(hex_data, result='generator'):
                         address = line[:10].strip()
                         content = line[10:59].strip()
-                        text    = line[60:].strip() 
+                        text = line[60:].strip() 
 
                         editor_item = QTreeWidgetItem(self.editor_tree)
                         
@@ -395,6 +414,20 @@ class UARTManager(QMainWindow):
         if self.connection.is_running:
             self.start_serial_thread()
 
+    def save_content_to_file(self):
+        try: 
+            with open(self.current_opened_file, "wb") as f:
+                for i in range(self.editor_tree.topLevelItemCount()):
+                    item = self.editor_tree.topLevelItem(i)
+                    text = item.text(1)
+                    f.write(bytes.fromhex(text))
+
+        except Exception as ex:
+            self.show_error(f"SAVE FILE ERROR: {ex}")
+
+        else:
+            print("saved file")
+
     def toggle_hex_mode(self, checked):
         self.hex_mode = checked
         self.terminal.clear()
@@ -431,6 +464,22 @@ class UARTManager(QMainWindow):
             
         self.serial_thread.start()
         self.statusBar().showMessage(f"Connected to {self.current_port}")
+
+    def edit_window(self, data):
+        
+        new_text, ok = QInputDialog.getText(
+            self, 
+            "Edit", 
+            f"{data}\n\nEdit:", 
+            QLineEdit.EchoMode.Normal, 
+            data
+        )
+
+        if ok and new_text:
+            print(f"Zaktualizowano: {new_text}")
+            return new_text
+        
+        return None
 
     def show_error(self, message):
         error = QMessageBox(self)

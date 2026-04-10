@@ -1,4 +1,4 @@
-# Dokumentacja projetu: * Embedded debugger *
+# Dokumentacja projetu: Embedded debugger
 
 ## Zespoł projetowy:
 _Kacper Zoła_
@@ -34,7 +34,7 @@ protokół UART, wyszukiwanie ciągów znaków z pliku binarnego, analize metada
 - hexdump  -> analiza plików w systemie hexdecimal
 - pyserial -> komunikacja poprzez protokół UART z płytkami
 - esptools -> wydobywanie firmware procesorów platformy ESP32
-- pylink   -> JTAG/SWD wydobywanie firmware procesorów Arm Cortex M (w trakcie)
+- pyocd    -> SWD wydobywanie firmware procesorów Arm Cortex M
 - re       -> analiza ciągów znaków w danych binarnych
 - os       -> wydobywanie metadanych plików oraz drzewo plików w otwartym folderze
 
@@ -42,4 +42,4 @@ protokół UART, wyszukiwanie ciągów znaków z pliku binarnego, analize metada
 Aplikacje można uruchomić poprzez użycie interpretera python na plik _main.py_.
 
 ## Możliwości rozwojowe
-Wdrożenie biblioteki pyOcd i wsparcie dla bardziej "obszerengo" typu kontrolerów, szersze wspracie protokołu JTAG
+Wdrożenie biblioteki pylink i wdrożenie wsparcia protokołu JTAG
