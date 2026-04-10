@@ -339,7 +339,7 @@ class UARTManager(QMainWindow):
 
                     for line in hexdump.hexdump(hex_data, result='generator'):
                         address = line[:10].strip()
-                        content = line[10:59].strip()
+                        content = line[10:59].strip().replace("  ", " ")
                         text = line[60:].strip() 
 
                         editor_item = QTreeWidgetItem(self.editor_tree)
