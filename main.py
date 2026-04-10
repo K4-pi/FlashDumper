@@ -149,9 +149,9 @@ class UARTManager(QMainWindow):
         files_menu = QMenu(self)
 
         files_menu.addSeparator()
-        save_file_act = files_menu.addAction("Save file")
         open_file_act = files_menu.addAction("Open file")
         open_dir_act = files_menu.addAction("Open folder")
+        save_file_act = files_menu.addAction("Save file")
         
         save_file_act.triggered.connect(self.save_content_to_file)
         open_file_act.triggered.connect(self.open_file)
@@ -278,7 +278,13 @@ class UARTManager(QMainWindow):
 
         if value:
             item.setText(column, value)
-            # TODO: need to update ascii snippet 
+
+            s = []
+
+            for b in bytes.fromhex(value):    
+                s.append(chr(b) if 32 <= b < 127 else '.')
+
+            item.setText(2, "".join(s)) 
 
     def on_file_clicked(self, file, column):
         file_path = file.text(0)
@@ -291,19 +297,7 @@ class UARTManager(QMainWindow):
         full_path = os.path.join(os.path.dirname(self.base_dir), file_path)
 
         if os.path.isfile(full_path):
-            try:
-                with open(full_path, 'rb') as f:
-                    raw_data = f.read()
-                    
-                    hex_text = hexdump.hexdump(raw_data, result='return')
-                    
-                    self.editor_tree.clear()
-                    
-            except Exception as e:
-                self.show_error(f"Error opening file: {e}")
-
-            else:
-                self.current_opened_file = file_path
+            self.open_file(full_path)
 
     def open_meta_window(self):
 
@@ -324,9 +318,16 @@ class UARTManager(QMainWindow):
         dialog = DumpWindow(ports_list=ports, parent=self)
         dialog.exec()
 
-    def open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, "Open Binary File", "", "All Files (*);;Binary Files (*.bin);;Python Files (*.py)")            
+    def open_file(self, filename=None):
 
+        print(f"filename = {filename}")
+
+        if filename:
+            file_path = filename
+        
+        else:
+            file_path, _ = QFileDialog.getOpenFileName(self, "Open Binary File", "", "All Files (*);;Binary Files (*.bin);;Python Files (*.py)")            
+        
         if file_path:
             
             try:
